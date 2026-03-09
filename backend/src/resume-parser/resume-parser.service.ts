@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
+import 'pdf-parse/worker';
 import { PDFParse } from 'pdf-parse';
 import * as mammoth from 'mammoth';
 
@@ -43,12 +44,13 @@ export class ResumeParserService {
   async parsePdf(buffer: Buffer): Promise<ParsedProfile> {
     const parser = new PDFParse({ data: buffer });
     const result = await parser.getText();
-    return this.extractWithLLM(result.text);
+    await parser.destroy();
+    return this.extractWithLLM(result.text || '');
   }
 
   async parseDocx(buffer: Buffer): Promise<ParsedProfile> {
     const result = await mammoth.extractRawText({ buffer });
-    return this.extractWithLLM(result.value);
+    return this.extractWithLLM(result.value || '');
   }
 
   async extractWithLLM(text: string): Promise<ParsedProfile> {
@@ -97,6 +99,7 @@ Use "" for missing strings, 0 for unknown experience, "Unknown" for gender if no
       linkedinUrl: parsed.linkedinUrl || '',
       location: parsed.location || '',
       gender: parsed.gender || 'Unknown',
+      email: parsed.email || '',
     };
   }
 }
