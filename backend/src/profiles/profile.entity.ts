@@ -32,6 +32,9 @@ export class Profile {
   @Column({ type: 'text', nullable: true })
   rawText: string | null;
 
+  @Column({ type: 'vector', length: 1536, nullable: true })
+  skills_embedding?: number[] | null;
+
   @CreateDateColumn()
   createdAt: Date;
 }
