@@ -1,29 +1,30 @@
 import 'reflect-metadata';
-import express from 'express';
-import serverless from 'serverless-http';
+import type { Request, Response } from 'express';
 import { NestFactory } from '@nestjs/core';
-import { ExpressAdapter } from '@nestjs/platform-express';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from '../src/app.module';
 
-const expressApp = express();
-let cachedHandler: any = null;
+let cachedApp: ((req: Request, res: Response) => void) | null = null;
 
 async function bootstrap() {
-  if (cachedHandler) return cachedHandler;
+  if (cachedApp) return cachedApp;
 
-  const app = await NestFactory.create(
-    AppModule,
-    new ExpressAdapter(expressApp),
-  );
-
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
   app.enableCors();
   await app.init();
 
-  cachedHandler = serverless(expressApp);
-  return cachedHandler;
+  cachedApp = app.getHttpAdapter().getInstance();
+  return cachedApp;
 }
 
-export default async function handler(req: any, res: any) {
-  const h = await bootstrap();
-  return h(req, res);
+export default async function handler(req: Request, res: Response) {
+  const app = await bootstrap();
+
+  if (req.url === '/api') {
+    req.url = '/';
+  } else if (req.url.startsWith('/api/')) {
+    req.url = req.url.replace(/^\/api/, '');
+  }
+
+  return app(req, res);
 }
