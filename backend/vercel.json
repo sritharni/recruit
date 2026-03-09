@@ -1,7 +1,10 @@
 {
-    "functions": {
-      "api/[...all].ts": {
-        "maxDuration": 60
-      }
+  "functions": {
+    "api/[...all].ts": {
+      "maxDuration": 60
+    },
+    "api/resumes/upload.ts": {
+      "maxDuration": 60
     }
   }
+}
