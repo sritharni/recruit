@@ -1,6 +1,6 @@
 {
     "functions": {
-      "api/index.ts": {
+      "api/[...all].ts": {
         "maxDuration": 60
       }
     }
