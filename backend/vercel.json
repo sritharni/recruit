@@ -1,15 +1,8 @@
 {
-    "version": 2,
-    "builds": [
-      {
-        "src": "dist/main.js",
-        "use": "@vercel/node"
+    "functions": {
+      "api/index.ts": {
+        "runtime": "nodejs22.x",
+        "maxDuration": 60
       }
-    ],
-    "routes": [
-      {
-        "src": "/(.*)",
-        "dest": "dist/main.js"
-      }
-    ]
+    }
   }
