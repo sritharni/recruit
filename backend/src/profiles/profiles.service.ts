@@ -17,29 +17,6 @@ export interface ProfileResponse {
   linkedinUrl: string;
 }
 
-const SEED_PROFILES: Omit<Profile, 'id' | 'createdAt'>[] = [
-  { name: 'John Smith', skills: 'React,JavaScript,Node.js,Redux', experience: 5, location: 'California', gender: 'Male', linkedinUrl: 'https://linkedin.com/in/johnsmith1', email: null, resumeUrl: null, rawText: null },
-  { name: 'Emily Johnson', skills: 'Python,Django,PostgreSQL', experience: 4, location: 'Texas', gender: 'Female', linkedinUrl: 'https://linkedin.com/in/emilyjohnson2', email: null, resumeUrl: null, rawText: null },
-  { name: 'Michael Brown', skills: 'Java,Spring Boot,Docker', experience: 7, location: 'Florida', gender: 'Male', linkedinUrl: 'https://linkedin.com/in/michaelbrown3', email: null, resumeUrl: null, rawText: null },
-  { name: 'Sophia Davis', skills: 'React,TypeScript,GraphQL', experience: 3, location: 'New York', gender: 'Female', linkedinUrl: 'https://linkedin.com/in/sophiadavis4', email: null, resumeUrl: null, rawText: null },
-  { name: 'David Wilson', skills: 'AWS,Terraform,Kubernetes', experience: 8, location: 'Washington', gender: 'Male', linkedinUrl: 'https://linkedin.com/in/davidwilson5', email: null, resumeUrl: null, rawText: null },
-  { name: 'Olivia Martinez', skills: 'Machine Learning,Python,TensorFlow', experience: 5, location: 'Massachusetts', gender: 'Female', linkedinUrl: 'https://linkedin.com/in/oliviamartinez6', email: null, resumeUrl: null, rawText: null },
-  { name: 'Daniel Anderson', skills: 'Angular,TypeScript,RxJS', experience: 4, location: 'Arizona', gender: 'Male', linkedinUrl: 'https://linkedin.com/in/danielanderson7', email: null, resumeUrl: null, rawText: null },
-  { name: 'Ava Thomas', skills: 'UI/UX,Figma,HTML,CSS', experience: 3, location: 'Colorado', gender: 'Female', linkedinUrl: 'https://linkedin.com/in/avathomas8', email: null, resumeUrl: null, rawText: null },
-  { name: 'James Jackson', skills: 'Go,Microservices,Docker', experience: 6, location: 'North Carolina', gender: 'Male', linkedinUrl: 'https://linkedin.com/in/jamesjackson9', email: null, resumeUrl: null, rawText: null },
-  { name: 'Mia White', skills: 'Cybersecurity,Python,Network Security', experience: 7, location: 'Georgia', gender: 'Female', linkedinUrl: 'https://linkedin.com/in/miawhite10', email: null, resumeUrl: null, rawText: null },
-  { name: 'Ethan Harris', skills: 'Rust,Linux,Systems Programming', experience: 5, location: 'Oregon', gender: 'Male', linkedinUrl: 'https://linkedin.com/in/ethanharris11', email: null, resumeUrl: null, rawText: null },
-  { name: 'Charlotte Martin', skills: 'Product Management,Agile,SQL', experience: 6, location: 'New Jersey', gender: 'Female', linkedinUrl: 'https://linkedin.com/in/charlottemartin12', email: null, resumeUrl: null, rawText: null },
-  { name: 'Alexander Thompson', skills: 'Flutter,Dart,Firebase', experience: 4, location: 'Utah', gender: 'Male', linkedinUrl: 'https://linkedin.com/in/alexanderthompson13', email: null, resumeUrl: null, rawText: null },
-  { name: 'Amelia Garcia', skills: 'React,Next.js,TypeScript', experience: 4, location: 'Nevada', gender: 'Female', linkedinUrl: 'https://linkedin.com/in/ameliagarcia14', email: null, resumeUrl: null, rawText: null },
-  { name: 'Benjamin Martinez', skills: 'Node.js,Express,MongoDB', experience: 5, location: 'Illinois', gender: 'Male', linkedinUrl: 'https://linkedin.com/in/benjaminmartinez15', email: null, resumeUrl: null, rawText: null },
-  { name: 'Harper Robinson', skills: 'Python,FastAPI,Redis', experience: 6, location: 'Virginia', gender: 'Female', linkedinUrl: 'https://linkedin.com/in/harperrobinson16', email: null, resumeUrl: null, rawText: null },
-  { name: 'Lucas Clark', skills: 'Java,Spring,Kafka', experience: 7, location: 'Michigan', gender: 'Male', linkedinUrl: 'https://linkedin.com/in/lucasclark17', email: null, resumeUrl: null, rawText: null },
-  { name: 'Evelyn Rodriguez', skills: 'React,GraphQL,Apollo', experience: 3, location: 'Pennsylvania', gender: 'Female', linkedinUrl: 'https://linkedin.com/in/evelynrodriguez18', email: null, resumeUrl: null, rawText: null },
-  { name: 'Henry Lewis', skills: 'C#,.NET,Azure', experience: 8, location: 'Ohio', gender: 'Male', linkedinUrl: 'https://linkedin.com/in/henrylewis19', email: null, resumeUrl: null, rawText: null },
-  { name: 'Abigail Lee', skills: 'Data Science,Python,Pandas', experience: 4, location: 'Minnesota', gender: 'Female', linkedinUrl: 'https://linkedin.com/in/abigaillee20', email: null, resumeUrl: null, rawText: null },
-];
-
 function toResponse(p: Profile): ProfileResponse {
   const skills =
     typeof p.skills === 'string'
@@ -65,37 +42,6 @@ export class ProfilesService {
     private embeddingService: EmbeddingService,
     private config: ConfigService,
   ) {}
-
-  async onModuleInit() {
-    const t0 = Date.now();
-    console.log('[TIMING] ProfilesService.onModuleInit start');
-    const qr = this.profileRepo.manager.connection.createQueryRunner();
-    await qr.connect();
-    try {
-      await qr.query('CREATE EXTENSION IF NOT EXISTS vector');
-      await qr.query(`
-        ALTER TABLE profiles
-        ADD COLUMN IF NOT EXISTS skills_embedding vector(1536)
-      `);
-      console.log(`[TIMING] onModuleInit extension/alter +${Date.now() - t0}ms`);
-    } finally {
-      await qr.release();
-    }
-
-    const count = await this.profileRepo.count();
-    if (count === 0) {
-      const tSeed = Date.now();
-      for (const p of SEED_PROFILES) {
-        await this.profileRepo.save(this.profileRepo.create(p));
-      }
-      console.log(`[TIMING] onModuleInit seed ${SEED_PROFILES.length} profiles +${Date.now() - tSeed}ms`);
-    }
-
-    const tBackfill = Date.now();
-    await this.backfillEmbeddings();
-    console.log(`[TIMING] onModuleInit backfillEmbeddings +${Date.now() - tBackfill}ms`);
-    console.log(`[TIMING] ProfilesService.onModuleInit done +${Date.now() - t0}ms`);
-  }
 
   async backfillEmbeddings(): Promise<void> {
     const qr = this.profileRepo.manager.connection.createQueryRunner();
