@@ -35,6 +35,8 @@ export class ResumeService {
     gender: string;
     linkedinUrl: string;
   }> {
+    const t0 = Date.now();
+    console.log('[TIMING] uploadResume start');
     if (!file || !file.buffer) {
       throw new BadRequestException('No file uploaded');
     }
@@ -57,7 +59,9 @@ export class ResumeService {
     } else {
       throw new BadRequestException('Only PDF and DOCX files are allowed');
     }
+    console.log(`[TIMING] uploadResume parse done +${Date.now() - t0}ms`);
 
+    const tTx = Date.now();
     const result = await this.profileRepo.manager.transaction(async (tx) => {
       const profileRepo = tx.getRepository(Profile);
       const resumeRepo = tx.getRepository(Resume);
@@ -102,7 +106,9 @@ export class ResumeService {
         linkedinUrl: savedProfile.linkedinUrl,
       };
     });
+    console.log(`[TIMING] uploadResume transaction done +${Date.now() - tTx}ms`);
 
+    const tEmb = Date.now();
     try {
       const embedding = await this.embeddingService.embedText(parsed.skills.join(','));
       const vectorSql = pgvector.toSql(embedding);
@@ -111,10 +117,12 @@ export class ResumeService {
         'UPDATE profiles SET skills_embedding = $1::vector WHERE id = $2',
         [vectorSql, result.id],
       );
+      console.log(`[TIMING] uploadResume embedding +${Date.now() - tEmb}ms`);
     } catch {
       // Skip embedding on failure
     }
 
+    console.log(`[TIMING] uploadResume done +${Date.now() - t0}ms`);
     return result;
   }
 }

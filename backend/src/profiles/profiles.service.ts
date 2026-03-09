@@ -67,6 +67,8 @@ export class ProfilesService {
   ) {}
 
   async onModuleInit() {
+    const t0 = Date.now();
+    console.log('[TIMING] ProfilesService.onModuleInit start');
     const qr = this.profileRepo.manager.connection.createQueryRunner();
     await qr.connect();
     try {
@@ -75,18 +77,24 @@ export class ProfilesService {
         ALTER TABLE profiles
         ADD COLUMN IF NOT EXISTS skills_embedding vector(1536)
       `);
+      console.log(`[TIMING] onModuleInit extension/alter +${Date.now() - t0}ms`);
     } finally {
       await qr.release();
     }
 
     const count = await this.profileRepo.count();
     if (count === 0) {
+      const tSeed = Date.now();
       for (const p of SEED_PROFILES) {
         await this.profileRepo.save(this.profileRepo.create(p));
       }
+      console.log(`[TIMING] onModuleInit seed ${SEED_PROFILES.length} profiles +${Date.now() - tSeed}ms`);
     }
 
+    const tBackfill = Date.now();
     await this.backfillEmbeddings();
+    console.log(`[TIMING] onModuleInit backfillEmbeddings +${Date.now() - tBackfill}ms`);
+    console.log(`[TIMING] ProfilesService.onModuleInit done +${Date.now() - t0}ms`);
   }
 
   async backfillEmbeddings(): Promise<void> {
@@ -96,7 +104,13 @@ export class ProfilesService {
       const rows = await qr.query(
         'SELECT id, skills FROM profiles WHERE skills_embedding IS NULL AND skills IS NOT NULL AND skills != \'\'',
       );
-      for (const row of rows) {
+      const needBackfill = Array.isArray(rows) ? rows.length : 0;
+      if (needBackfill > 0) {
+        console.log(`[TIMING] backfillEmbeddings start (${needBackfill} profiles)`);
+      }
+      for (let i = 0; i < (Array.isArray(rows) ? rows.length : 0); i++) {
+        const row = (rows as { id: number; skills: string }[])[i];
+        const tRow = Date.now();
         try {
           const embedding = await this.embeddingService.embedText(row.skills);
           const vectorSql = pgvector.toSql(embedding);
@@ -104,6 +118,7 @@ export class ProfilesService {
             'UPDATE profiles SET skills_embedding = $1::vector WHERE id = $2',
             [vectorSql, row.id],
           );
+          console.log(`[TIMING] backfillEmbeddings profile id=${row.id} +${Date.now() - tRow}ms`);
         } catch {
           // Skip on embedding failure (e.g. no API key)
         }
@@ -123,20 +138,27 @@ export class ProfilesService {
   }
 
   async getProfiles(filter: FilterDto): Promise<{ data: ProfileResponse[]; total: number }> {
+    const t0 = Date.now();
     const hasSkillsFilter = (filter.skills?.trim() ?? '').length > 0;
     const useSimilaritySearch = hasSkillsFilter;
 
     if (useSimilaritySearch) {
-      return this.getProfilesBySimilarity(filter);
+      const out = await this.getProfilesBySimilarity(filter);
+      console.log(`[TIMING] getProfiles (similarity) +${Date.now() - t0}ms`);
+      return out;
     }
 
-    return this.getProfilesByFilters(filter);
+    const out = await this.getProfilesByFilters(filter);
+    console.log(`[TIMING] getProfiles (filters) +${Date.now() - t0}ms`);
+    return out;
   }
 
   private async getProfilesBySimilarity(filter: FilterDto): Promise<{ data: ProfileResponse[]; total: number }> {
+    const t0 = Date.now();
     let queryVector: number[];
     try {
       queryVector = await this.embeddingService.embedText(filter.skills!.trim());
+      console.log(`[TIMING] getProfilesBySimilarity embed +${Date.now() - t0}ms`);
     } catch {
       return this.getProfilesByFilters(filter);
     }

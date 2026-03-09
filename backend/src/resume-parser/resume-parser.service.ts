@@ -42,18 +42,26 @@ export class ResumeParserService {
   }
 
   async parsePdf(buffer: Buffer): Promise<ParsedProfile> {
+    const t0 = Date.now();
+    console.log('[TIMING] parsePdf start');
     const parser = new PDFParse({ data: buffer });
     const result = await parser.getText();
     await parser.destroy();
+    console.log(`[TIMING] parsePdf text extraction +${Date.now() - t0}ms`);
     return this.extractWithLLM(result.text || '');
   }
 
   async parseDocx(buffer: Buffer): Promise<ParsedProfile> {
+    const t0 = Date.now();
+    console.log('[TIMING] parseDocx start');
     const result = await mammoth.extractRawText({ buffer });
+    console.log(`[TIMING] parseDocx text extraction +${Date.now() - t0}ms`);
     return this.extractWithLLM(result.value || '');
   }
 
   async extractWithLLM(text: string): Promise<ParsedProfile> {
+    const t0 = Date.now();
+    console.log('[TIMING] extractWithLLM (OpenAI) start');
     if (!this.openai) {
       throw new Error('OPENAI_API_KEY is not configured');
     }
@@ -87,6 +95,7 @@ Use "" for missing strings, 0 for unknown experience, "Unknown" for gender if no
     });
 
     const content = response.choices[0]?.message?.content;
+    console.log(`[TIMING] extractWithLLM (OpenAI) done +${Date.now() - t0}ms`);
     if (!content) {
       throw new Error('Empty response from OpenAI');
     }
