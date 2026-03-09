@@ -43,24 +43,33 @@ const ResumeUpload: React.FC<{
 
   const handleUpload = async () => {
     if (!file) return;
+  
     setUploading(true);
     setError(null);
     setSuccess(null);
+  
     try {
       const formData = new FormData();
       formData.append('file', file);
-      const res = await axios.post<Profile>(`${API_BASE}/resumes/upload`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+  
+      const res = await axios.post<Profile>(
+        `${API_BASE}/resumes/upload`,
+        formData
+      );
+  
       setSuccess(`Profile created for ${res.data.name}`);
       setFile(null);
       onUploadSuccess?.(res.data);
     } catch (err: unknown) {
       let msg = 'Upload failed';
+  
       if (axios.isAxiosError(err)) {
         const d = err.response?.data;
-        msg = Array.isArray(d?.message) ? d.message.join(', ') : d?.message || err.message;
+        msg = Array.isArray(d?.message)
+          ? d.message.join(', ')
+          : d?.message || err.message;
       }
+  
       setError(String(msg));
     } finally {
       setUploading(false);
