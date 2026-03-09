@@ -22,6 +22,9 @@ import { Resume } from './resume/resume.entity';
       database: process.env.POSTGRES_DATABASE || 'recruit',
       entities: [Profile, Resume],
       synchronize: true,
+      ssl: process.env.POSTGRES_SSL === 'true'
+    ? { rejectUnauthorized: false }
+    : false,
     }),
     ProfilesModule,
     ResumeModule,
