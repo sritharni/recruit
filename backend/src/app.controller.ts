@@ -9,4 +9,13 @@ export class AppController {
   getHello(): string {
     return this.appService.getHello();
   }
+
+  @Get('test')
+  getTest() {
+    return {
+      ok: true,
+      message: 'Vercel backend is working',
+      timestamp: new Date().toISOString(),
+    };
+  }
 }
